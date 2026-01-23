@@ -1,0 +1,128 @@
+# Github functions for git
+git_hard_update() {
+    echo "⚠️  WARNING: This will permanently delete ALL local changes!"
+    echo "Repository: $(git rev-parse --show-toplevel 2>/dev/null || echo 'Not a git repo')"
+    read -p "Continue? (y/N): " confirm
+
+    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+        echo "Aborted."
+        return 1
+    fi
+
+    git fetch origin || return 1
+    git reset --hard origin/main || return 1
+    git clean -fd
+
+    echo "✔ Repository successfully reset to origin/main"
+}
+
+git_quick_push() {
+    # Ensure we are inside a git repository
+    if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        echo "❌ Not inside a Git repository"
+        return 1
+    fi
+
+    # Ask for commit message
+    read -p "Commit message: " commit_msg
+    if [[ -z "$commit_msg" ]]; then
+        echo "❌ Commit message cannot be empty"
+        return 1
+    fi
+
+    # Ask for branch name
+    read -p "Branch name to push to: " branch
+    if [[ -z "$branch" ]]; then
+        echo "❌ Branch name cannot be empty"
+        return 1
+    fi
+
+    # Show summary
+    echo "----------------------------------------"
+    echo "Commit message: $commit_msg"
+    echo "Branch: origin/$branch"
+    echo "----------------------------------------"
+
+    read -p "Proceed with commit & push? (y/N): " confirm
+    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+        echo "Aborted."
+        return 1
+    fi
+
+    git add . || return 1
+    git commit -m "$commit_msg" || return 1
+    git push origin "$branch"
+
+    echo "✔ Changes committed and pushed to origin/$branch"
+}
+
+## Wifi Connection Terminal
+connectwifi() {
+  local SSID PASS SAVE_IF_POSSIBLE iface
+
+  # list available networks
+  if [ "$1" = "list" ]; then
+    sudo nmcli device wifi list
+    return $?
+  fi
+
+  # set SSID (allow default via environment variable DEFAULT_SSID)
+  if [ -n "$1" ]; then
+    SSID="$1"
+  else
+    SSID="${DEFAULT_SSID:-}"
+  fi
+
+  if [ -z "$SSID" ]; then
+    echo "Usage: connectwifi list"
+    echo "       connectwifi \"SSID\" [PASSWORD] [save]"
+    echo "Or set DEFAULT_SSID in your ~/.bashrc to avoid passing SSID."
+    return 1
+  fi
+
+  # optional args
+  if [ -n "$2" ]; then
+    PASS="$2"
+  else
+    # prompt securely for password
+    read -s -p "Password for \"$SSID\": " PASS
+    echo
+  fi
+
+  if [ -n "$3" ] && [ "$3" = "save" ]; then
+    SAVE_IF_POSSIBLE=1
+  fi
+
+  # Attempt connection. If user asked to save, let nmcli prompt/version use keyring.
+  if [ -n "$SAVE_IF_POSSIBLE" ]; then
+    # when saving, do NOT pass password on cmdline to encourage NM to prompt/save
+    if sudo nmcli device wifi connect "$SSID"; then
+      echo "Connected to \"$SSID\" (NetworkManager may have stored credentials)."
+    else
+      echo "Failed to connect to \"$SSID\" (save mode)."
+      unset PASS SAVE_IF_POSSIBLE
+      return 1
+    fi
+  else
+    # Normal mode: pass password (or provided) to nmcli
+    if sudo nmcli device wifi connect "$SSID" password "$PASS"; then
+      echo "Connected to \"$SSID\"."
+    else
+      echo "Failed to connect to \"$SSID\"."
+      unset PASS SAVE_IF_POSSIBLE
+      return 1
+    fi
+  fi
+
+  # try to detect wifi interface name (first wifi device)
+  iface="$(nmcli -t -f DEVICE,TYPE,STATE device status | awk -F: '$2=="wifi" {print $1; exit}')"
+  if [ -n "$iface" ]; then
+    echo "Connection info for interface: $iface"
+    nmcli -f GENERAL,IP4,STATE device show "$iface" 2>/dev/null || nmcli connection show --active
+  else
+    nmcli connection show --active
+  fi
+
+  # clear sensitive vars
+  unset PASS SAVE_IF_POSSIBLE
+}
