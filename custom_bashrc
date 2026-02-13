@@ -126,3 +126,12 @@ connectwifi() {
   # clear sensitive vars
   unset PASS SAVE_IF_POSSIBLE
 }
+
+
+export ROS_DOMAIN_ID=10
+export ROS_LOCALHOST_ONLY=0
+
+alias gb="vim ~/.bashrc"
+alias gi="source ~/.bashrc"
+
+alias sros2="source /opt/ros/humble/setup.sh"
