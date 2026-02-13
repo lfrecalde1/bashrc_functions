@@ -127,11 +127,49 @@ connectwifi() {
   unset PASS SAVE_IF_POSSIBLE
 }
 
+# === GitHub SSH key setup ===
+github_ssh_setup() {
+  local EMAIL="$1"
+  local KEY_PATH="$HOME/.ssh/id_ed25519"
+
+  if [ -z "$EMAIL" ]; then
+    echo "Usage: github_ssh_setup your_email@example.com"
+    return 1
+  fi
+
+  # 1. Generate SSH key if it does not exist
+  if [ -f "$KEY_PATH" ]; then
+    echo "[INFO] SSH key already exists at $KEY_PATH"
+  else
+    echo "[INFO] Generating new ED25519 SSH key..."
+    ssh-keygen -t ed25519 -C "$EMAIL" -f "$KEY_PATH"
+  fi
+
+  # 2. Start ssh-agent if not running
+  if ! pgrep -u "$USER" ssh-agent > /dev/null; then
+    echo "[INFO] Starting ssh-agent..."
+    eval "$(ssh-agent -s)"
+  else
+    echo "[INFO] ssh-agent already running."
+  fi
+
+  # 3. Add key to agent
+  echo "[INFO] Adding SSH key to agent..."
+  ssh-add "$KEY_PATH"
+
+  # 4. Show public key for GitHub
+  echo ""
+  echo "===== COPY THIS PUBLIC KEY TO GITHUB ====="
+  cat "${KEY_PATH}.pub"
+  echo "=========================================="
+  echo "GitHub -> Settings -> SSH and GPG keys -> New SSH key"
+}
+
+
 
 export ROS_DOMAIN_ID=10
 export ROS_LOCALHOST_ONLY=0
 
 alias gb="vim ~/.bashrc"
 alias gi="source ~/.bashrc"
-
 alias sros2="source /opt/ros/humble/setup.sh"
