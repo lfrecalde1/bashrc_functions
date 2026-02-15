@@ -181,3 +181,31 @@ alias sros2="source /opt/ros/humble/setup.sh"
 #$ipv4.gateway 10.0.0.1 \
 #ipv4.dns "8.8.8.8 1.1.1.1" \
 #ipv4.method manual
+#
+#
+#
+#
+alias acp_build="colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+colcon_build_pkg() {
+  # Usage:
+  #   colcon_build_pkg <package_name>
+  # Example:
+  #   colcon_build_pkg dq_nmpc_control_nodelet
+
+  if [ -z "$1" ]; then
+    echo "Error: No package name provided."
+    echo "Usage: colcon_build_pkg <package_name>"
+    return 1
+  fi
+
+  local PKG_NAME="$1"
+
+  echo "Building package: ${PKG_NAME} (Release + symlink + compile_commands)"
+
+  colcon build \
+    --packages-select "${PKG_NAME}" \
+    --symlink-install \
+    --cmake-args \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+}
