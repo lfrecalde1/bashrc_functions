@@ -213,3 +213,14 @@ colcon_build_pkg() {
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 }
+
+alias fan="sudo jetson_clocks --fan"
+
+#sudo nmcli connection modify "Wired connection 1" \
+#ipv4.addresses 10.0.0.100/24 \
+#$ipv4.gateway 10.0.0.1 \
+#ipv4.dns "8.8.8.8 1.1.1.1" \
+#ipv4.method manual
+alias perception_build="colcon build --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/eagle11/acp_ws/src/acados/lib
+export ACADOS_SOURCE_DIR=/home/eagle11/acp_ws/src/acados
