@@ -142,6 +142,7 @@ alias sros2="source /opt/ros/humble/setup.sh"
 #
 #
 alias acp_build="colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+alias gpu_build="colcon build --symlink-install   --packages-select direct_lidar_inertial_odometry   --cmake-args -DCMAKE_BUILD_TYPE=Release -DUSE_NANO_GICP_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=87"
 export COLCON_PAYLOAD_WS_DIR="$HOME/payload_transportation_ws"
 #alias acp_build="colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DMUJOCO_ROOT_DIR=$COLCON_PAYLOAD_WS_DIR/mujoco-3.4.0 -DCMAKE_BUILD_TYPE=RelWithDebInfo"
 colcon_build_pkg() {
