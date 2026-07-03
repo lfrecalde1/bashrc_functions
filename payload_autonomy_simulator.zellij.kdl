@@ -19,7 +19,7 @@ layout {
       pane split_direction="horizontal" {
         pane name="payload_control" {
           command "bash"
-          args "-lc" "cd \"${COLCON_PAYLOAD_WS_DIR:-$HOME/payload_transportation_ws}\" && iox-roudi"
+	  args "-lc" "cd \"${COLCON_PAYLOAD_WS_DIR:-$HOME/payload_transportation_ws}\" && iox-roudi"
         }
 
         pane name="payload_shell_1" {
@@ -59,3 +59,7 @@ layout {
           command "bash"
           args "-lc" "cd \"${COLCON_PAYLOAD_WS_DIR:-$HOME/payload_transportation_ws}\" && source install/setup.bash && clear && exec bash"
         }
+      }
+    }
+  }
+}

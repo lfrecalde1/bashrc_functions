@@ -19,12 +19,12 @@ layout {
       pane split_direction="horizontal" {
         pane name="payload_control_lidar" {
           command "bash"
-          args "-lc" "cd \"${COLCON_PAYLOAD_WS_DIR:-$HOME/payload_transportation_ws}\" && source install/setup.bash && ros2 launch acp_autonomy eagle_payload_control_lidar.launch.py quad_name:=eagle11"
+          args "-lc" "cd \"${COLCON_PAYLOAD_WS_DIR:-$HOME/payload_transportation_ws}\" && iox-roudi"
         }
 
         pane name="payload_shell_1" {
           command "bash"
-          args "-lc" "cd \"${COLCON_PAYLOAD_WS_DIR:-$HOME/payload_transportation_ws}\" && source install/setup.bash && clear && exec bash"
+          args "-lc" "cd \"${COLCON_PAYLOAD_WS_DIR:-$HOME/payload_transportation_ws}\" && source install/setup.bash && ros2 launch acp_autonomy eagle_payload_control_lidar.launch.py quad_name:=eagle11"
         }
 
         pane name="payload_shell_2" {
