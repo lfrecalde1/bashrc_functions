@@ -170,6 +170,7 @@ colcon_build_pkg() {
 }
 
 alias fan="sudo jetson_clocks --fan"
+sudo jetson_clocks --fan
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/$HOME/acados/lib
 export ACADOS_SOURCE_DIR=/$HOME/acados
@@ -177,4 +178,20 @@ export ACADOS_SOURCE_DIR=/$HOME/acados
 export LD_LIBRARY_PATH=$HOME/clangd-root/usr/lib/aarch64-linux-gnu:$HOME/clangd-root/usr/lib:$LD_LIBRARY_PATH
 export PATH="$HOME/clangd-root/usr/bin:$PATH"
 
-export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+export ROS_DOMAIN_ID=11
+export ROS_LOCALHOST_ONLY=1
+export CYCLONEDDS_URI="$COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/cyclone/cyclone_eagle.xml"
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+alias max_bandwith="sudo sysctl -w net.core.rmem_max=2147483647"
+sudo sysctl -w net.core.rmem_max=2147483647
+
+
+alias enable_chrony="sudo systemctl enable chrony.service"
+alias restart_chrony="sudo systemctl restart chrony"
+alias check_chrony="watch -c sudo chronyc sources"
+alias edit_chrony="sudo vim /etc/chrony/chrony.conf"
+
+alias zenoh_lidar_eagle="zenoh-bridge-ros2dds -c $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_lidar_eagle.json5"
+alias zenoh_vicon_eagle="zenoh-bridge-ros2dds -c $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_vicon_eagle.json5"
+alias zenoh_simulator_eagle="zenoh-bridge-ros2dds -c $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_simulator_eagle.json5"
+alias zero_copy="iox-roudi"
