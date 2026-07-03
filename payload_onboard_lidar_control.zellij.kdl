@@ -1,0 +1,65 @@
+layout {
+  default_tab_template {
+    pane size=1 borderless=true {
+      plugin location="zellij:tab-bar"
+    }
+    children
+    pane size=2 borderless=true {
+      plugin location="zellij:status-bar"
+    }
+  }
+
+  tab name="onboard_control" {
+    pane split_direction="vertical" {
+      pane name="zenoh_lidar" {
+        command "bash"
+        args "-lc" "cd \"${COLCON_PAYLOAD_WS_DIR:-$HOME/payload_transportation_ws}\" && source install/setup.bash && ros2 launch acp_autonomy zenoh_eagle.launch.py bridge_type:=lidar"
+      }
+
+      pane split_direction="horizontal" {
+        pane name="payload_control_lidar" {
+          command "bash"
+          args "-lc" "cd \"${COLCON_PAYLOAD_WS_DIR:-$HOME/payload_transportation_ws}\" && source install/setup.bash && ros2 launch acp_autonomy eagle_payload_control_lidar.launch.py quad_name:=eagle11"
+        }
+
+        pane name="payload_shell_1" {
+          command "bash"
+          args "-lc" "cd \"${COLCON_PAYLOAD_WS_DIR:-$HOME/payload_transportation_ws}\" && source install/setup.bash && clear && exec bash"
+        }
+
+        pane name="payload_shell_2" {
+          command "bash"
+          args "-lc" "cd \"${COLCON_PAYLOAD_WS_DIR:-$HOME/payload_transportation_ws}\" && source install/setup.bash && clear && exec bash"
+        }
+      }
+    }
+  }
+
+  tab name="workspace_shells" {
+    pane split_direction="vertical" {
+      pane split_direction="horizontal" {
+        pane name="ws_shell_1" {
+          command "bash"
+          args "-lc" "cd \"${COLCON_PAYLOAD_WS_DIR:-$HOME/payload_transportation_ws}\" && source install/setup.bash && clear && exec bash"
+        }
+
+        pane name="ws_shell_2" {
+          command "bash"
+          args "-lc" "cd \"${COLCON_PAYLOAD_WS_DIR:-$HOME/payload_transportation_ws}\" && source install/setup.bash && clear && exec bash"
+        }
+      }
+
+      pane split_direction="horizontal" {
+        pane name="ws_shell_3" {
+          command "bash"
+          args "-lc" "cd \"${COLCON_PAYLOAD_WS_DIR:-$HOME/payload_transportation_ws}\" && source install/setup.bash && clear && exec bash"
+        }
+
+        pane name="ws_shell_4" {
+          command "bash"
+          args "-lc" "cd \"${COLCON_PAYLOAD_WS_DIR:-$HOME/payload_transportation_ws}\" && source install/setup.bash && clear && exec bash"
+        }
+      }
+    }
+  }
+}
