@@ -4,6 +4,8 @@ fi
 
 if [ -z "$singularity" ]; then
         alias runlivox="cd /$HOME &&  singularity exec --nv -B /run dlio_jetpack6_ros2_gtsam_livox.sif /bin/bash"
+        alias runkilt="cd /$HOME &&  singularity exec --nv -B /run kilted.sif /bin/bash"
+        alias runkiltlivox="cd /$HOME &&  singularity exec --nv -B /run dlio_kilted.sif /bin/bash"
 fi
 # export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/eagle8/acp_ws/src/acados/lib
 # export ACADOS_SOURCE_DIR=/home/eagle8/acp_ws/src/acados
