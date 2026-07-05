@@ -81,6 +81,7 @@ connectwifi() {
 
 alias gb="vim ~/.bashrc"
 alias gi="source ~/.bashrc"
+source /opt/ros/kilted/setup.bash
 
 export LD_LIBRARY_PATH=$HOME/clangd-root/usr/lib/aarch64-linux-gnu:$HOME/clangd-root/usr/lib:$LD_LIBRARY_PATH
 export PATH="$HOME/clangd-root/usr/bin:$PATH"
