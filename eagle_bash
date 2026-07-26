@@ -4,7 +4,7 @@ fi
 if [ -z "$SINGULARITY_NAME" ]; then
         alias runlivox="cd /$HOME &&  singularity exec --nv -B /run dlio_jetpack6_ros2_gtsam_livox.sif /bin/bash"
 	alias runkilt="cd /$HOME &&  singularity exec --nv -B /run kilted.sif /bin/bash"
-        alias runkiltlivox="cd /$HOME &&  singularity exec --nv -B /run dlio_kilted.sif /bin/bash"
+        alias runkiltlivox="cd /$HOME &&  singularity exec --nv -B /run $HOME/ros2_kilted_setup/development.sif /bin/bash"
 fi
 
 . "$HOME/.cargo/env"
