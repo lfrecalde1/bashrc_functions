@@ -59,7 +59,7 @@ export ACADOS_SOURCE_DIR=/$HOME/acados
 
 alias max_bandwith="sudo sysctl -w net.core.rmem_max=2147483647"
 sudo sysctl -w net.core.rmem_max=2147483647
-source /home/fer/zenoh-plugin-ros2dds/install/setup.bash
+source $HOME/PHD_RESEARCH/zenoh-plugin-ros2dds/install/setup.bash
 
 alias zenoh_lidar_station="zenoh_bridge_ros2dds -c $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_lidar_station.json5"
 alias zenoh_lidar_multiple_station="zenoh_bridge_ros2dds -c $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_lidar_station_multiple.json5"
