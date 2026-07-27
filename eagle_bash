@@ -79,7 +79,7 @@ connectwifi() {
   unset PASS SAVE_IF_POSSIBLE
 }
 
-alias gb="vim ~/.bashrc"
+alias gb="nvim ~/.bashrc"
 alias gi="source ~/.bashrc"
 source /opt/ros/kilted/setup.bash
 
@@ -187,6 +187,7 @@ alias edit_chrony="sudo vim /etc/chrony/chrony.conf"
 alias lidar_eagle="zellij --layout $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/launch/zellij/payload_onboard_lidar_control.zellij.kdl"
 alias vicon_eagle="zellij --layout $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/launch/zellij/payload_autonomy_vicon.zellij.kdl"
 alias simulator_eagle="zellij --layout $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/launch/zellij/payload_autonomy_simulator.zellij.kdl"
+alias simulator_lidar_eagle="zellij --layout $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/launch/zellij/payload_autonomy_lidar_simulator.zellij.kdl"
 alias zero_copy="iox-roudi"
 
 record_payload_bag() {
