@@ -1,3 +1,4 @@
+source /opt/ros/kilted/setup.bash
 alias gb="vim ~/.bashrc"
 alias gi="source ~/.bashrc"
 
@@ -69,3 +70,5 @@ alias zenoh_vicon_multiple_station="zenoh_bridge_ros2dds -c $COLCON_PAYLOAD_WS_D
 
 alias zenoh_simulator_station="zenoh_bridge_ros2dds -c $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_simulator_station.json5"
 alias zenoh_simulator_multiple_station="zenoh_bridge_ros2dds -c $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_simulator_station_multiple.json5"
+
+export DISPLAY=:0
