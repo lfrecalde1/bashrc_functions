@@ -208,8 +208,13 @@ record_payload_bag() {
   ros2 bag record \
     -o "${BAG_NAME}" \
     "${NS}/odom" \
+    "${NS}/estimated_odom" \
     "${NS}/payload/odom" \
+    "${NS}/payload/estimated_odom" \
     "${NS}/position_cmd" \
+    "${NS}/livox/lidar" \
+    "${NS}/imu" \
+    "${NS}/livox/imu" \
     "${NS}/trpy_cmd"
 }
 
@@ -243,3 +248,32 @@ ethernet_static() {
     ipv4.route-metric 100 &&
   sudo nmcli connection up "$connection"
 }
+
+lidar_static() {
+  local connection="${1:-Profile 1}"
+  local address="${2:-172.18.34.100/24}"
+  local gateway="${3:-172.18.34.1}"
+
+  # Verify that the NetworkManager connection exists.
+  if ! nmcli -t -f NAME connection show | grep -Fxq "$connection"; then
+    echo "Error: NetworkManager connection '$connection' does not exist."
+    echo "Available connections:"
+    nmcli -f NAME,TYPE,DEVICE connection show
+    return 1
+  fi
+
+  echo "Configuring '$connection' for the Livox LiDAR:"
+  echo "  Address: ${address}"
+  echo "  Gateway: ${gateway}"
+  echo "  Netmask: 255.255.255.0"
+
+  sudo nmcli connection modify "$connection" \
+    ipv4.method manual \
+    ipv4.addresses "$address" \
+    ipv4.gateway "$gateway" \
+    ipv4.dns "" \
+    ipv4.never-default yes \
+    ipv4.route-metric 200 &&
+  sudo nmcli connection up "$connection"
+}
+
