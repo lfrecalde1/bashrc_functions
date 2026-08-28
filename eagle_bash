@@ -189,6 +189,7 @@ alias vicon_eagle="zellij --layout $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack
 alias simulator_eagle="zellij --layout $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/launch/zellij/payload_autonomy_simulator.zellij.kdl"
 alias simulator_lidar_eagle="zellij --layout $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/launch/zellij/payload_autonomy_lidar_simulator.zellij.kdl"
 alias zero_copy="iox-roudi"
+alias clean_iox="pkill -9 iox-roudi"
 
 record_payload_bag() {
   # Usage:
