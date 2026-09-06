@@ -4,7 +4,7 @@ fi
 if [ -z "$SINGULARITY_NAME" ]; then
         alias runlivox="cd /$HOME &&  singularity exec --nv -B /run dlio_jetpack6_ros2_gtsam_livox.sif /bin/bash"
 	alias runkilt="cd /$HOME &&  singularity exec --nv -B /run kilted.sif /bin/bash"
-        alias runkiltlivox="cd /$HOME &&  singularity exec --nv -B /run $HOME/ros2_kilted_setup/development.sif /bin/bash"
+		alias runkiltlivox="cd /$HOME && singularity exec --nv -B /run $HOME/ros2_kilted_setup/crocoddyl.sif /bin/bash"
 fi
 
 . "$HOME/.cargo/env"
@@ -185,11 +185,17 @@ alias edit_chrony="sudo vim /etc/chrony/chrony.conf"
 
 
 alias lidar_eagle="zellij --layout $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/launch/zellij/payload_onboard_lidar_control.zellij.kdl"
+
 alias vicon_eagle="zellij --layout $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/launch/zellij/payload_autonomy_vicon.zellij.kdl"
+alias vicon_hybrid_eagle="zellij --layout $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/launch/zellij/payload_autonomy_hybrid_vicon.zellij.kdl"
+
 alias simulator_eagle="zellij --layout $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/launch/zellij/payload_autonomy_simulator.zellij.kdl"
 alias simulator_lidar_eagle="zellij --layout $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/launch/zellij/payload_autonomy_lidar_simulator.zellij.kdl"
+alias simulator_hybrid_eagle="zellij --layout $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/launch/zellij/payload_autonomy_hybrid_simulator.zellij.kdl"
+
 alias zero_copy="iox-roudi"
 alias clean_iox="pkill -9 iox-roudi"
+
 
 record_payload_bag() {
   # Usage:
