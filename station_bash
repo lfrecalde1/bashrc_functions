@@ -52,7 +52,7 @@ export CYCLONEDDS_URI="$COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagl
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
 
-alias acp_build="colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+alias acp_build="colcon build --symlink-install --cmake-clean-cache --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
 alias certify_ssh="ssh -T git@github.com"
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/$HOME/acados/lib
