@@ -186,6 +186,7 @@ alias edit_chrony='sudo nvim /etc/chrony/chrony.conf'
 
 
 alias lidar_eagle="zellij --layout $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/launch/zellij/payload_onboard_lidar_control.zellij.kdl"
+alias lidar_hybrid_eagle="zellij --layout $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/launch/zellij/payload_onboard_lidar_crocoddyl.zellij.kdl "
 
 alias vicon_eagle="zellij --layout $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/launch/zellij/payload_autonomy_vicon.zellij.kdl"
 alias vicon_hybrid_eagle="zellij --layout $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/launch/zellij/payload_autonomy_hybrid_vicon.zellij.kdl"
