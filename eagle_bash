@@ -178,10 +178,11 @@ alias max_bandwith="sudo sysctl -w net.core.rmem_max=2147483647"
 sudo sysctl -w net.core.rmem_max=2147483647
 
 
-alias enable_chrony="sudo systemctl enable chrony.service"
-alias restart_chrony="sudo systemctl restart chrony"
-alias check_chrony="watch -c sudo chronyc sources"
-alias edit_chrony="sudo vim /etc/chrony/chrony.conf"
+alias enable_chrony='sudo systemctl enable --now chrony.service'
+alias restart_chrony='sudo systemctl restart chrony.service'
+alias check_chrony='chronyc sources -a -v; echo; chronyc tracking'
+alias monitor_chrony='watch -n 2 -c "chronyc sources -a -v; echo; chronyc tracking"'
+alias edit_chrony='sudo nvim /etc/chrony/chrony.conf'
 
 
 alias lidar_eagle="zellij --layout $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/launch/zellij/payload_onboard_lidar_control.zellij.kdl"
