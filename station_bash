@@ -145,3 +145,9 @@ export DISPLAY=:0
 
 alias max_bandwidth="sudo sysctl -w net.core.rmem_max=2147483647"
 sudo sysctl -w net.core.rmem_max=2147483647
+
+alias enable_chrony='sudo systemctl enable --now chrony.service'
+alias restart_chrony='sudo systemctl restart chrony.service'
+alias check_chrony='chronyc sources -a -v; echo; chronyc tracking'
+alias monitor_chrony='watch -n 2 -c "chronyc sources -a -v; echo; chronyc tracking"'
+alias edit_chrony='sudo nvim /etc/chrony/chrony.conf'
