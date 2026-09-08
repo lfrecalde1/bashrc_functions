@@ -1,6 +1,39 @@
-source /opt/ros/kilted/setup.bash
+# ==============================================================================
+# Shell utilities
+# ==============================================================================
+
 alias gb="vim ~/.bashrc"
 alias gi="source ~/.bashrc"
+
+# ==============================================================================
+# ROS 2 Kilted
+# ==============================================================================
+
+source /opt/ros/kilted/setup.bash
+source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash
+
+# ==============================================================================
+# Rust / Cargo
+# ==============================================================================
+
+source "$HOME/.cargo/env"
+
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+
+# ==============================================================================
+# Terminal appearance
+# ==============================================================================
+
+export TERM=xterm-256color
+
+PS1='\[\033[01;33m\]\u@\h\[\033[01;34m\]:\[\033[00m\]\[\033[01;34m\]\w\[\033[00m\]\$ '
+
+export CLICOLOR=1
+export LSCOLORS=GxFxCxDxBxegedabagaced
+
+# ==============================================================================
+# GitHub SSH configuration
+# ==============================================================================
 
 github_ssh_setup() {
   local EMAIL="$1"
@@ -19,56 +52,96 @@ github_ssh_setup() {
   chmod 700 "$HOME/.ssh"
 
   if [ "$FORCE" = "--force" ]; then
-    local ts
-    ts="$(date +%Y%m%d_%H%M%S)"
-    [ -f "$KEY_PATH" ] && mv -f "$KEY_PATH" "${KEY_PATH}.bak.${ts}"
-    [ -f "${KEY_PATH}.pub" ] && mv -f "${KEY_PATH}.pub" "${KEY_PATH}.pub.bak.${ts}"
+    local timestamp
+    timestamp="$(date +%Y%m%d_%H%M%S)"
+
+    [ -f "$KEY_PATH" ] &&
+      mv -f "$KEY_PATH" "${KEY_PATH}.bak.${timestamp}"
+
+    [ -f "${KEY_PATH}.pub" ] &&
+      mv -f "${KEY_PATH}.pub" "${KEY_PATH}.pub.bak.${timestamp}"
   fi
 
   if [ -f "$KEY_PATH" ]; then
     echo "[INFO] SSH key already exists at $KEY_PATH"
   else
-    echo "[INFO] Generating new ED25519 SSH key at $KEY_PATH ..."
-    ssh-keygen -t ed25519 -a 64 -C "$EMAIL" -f "$KEY_PATH"
+    echo "[INFO] Generating new ED25519 SSH key at $KEY_PATH..."
+    ssh-keygen -t ed25519 -a 64 -C "$EMAIL" -f "$KEY_PATH" || return 1
   fi
 
-  # Prefer a local agent for this shell
   eval "$(ssh-agent -s)" >/dev/null 2>&1
-  ssh-add "$KEY_PATH" >/dev/null
+  ssh-add "$KEY_PATH" || return 1
 
-  echo ""
+  echo
   echo "===== COPY THIS PUBLIC KEY TO GITHUB ====="
   cat "${KEY_PATH}.pub"
   echo "=========================================="
-  echo ""
-  echo "Test with (forces this key):"
+  echo
+  echo "Test with:"
   echo "ssh -i \"$KEY_PATH\" -o IdentitiesOnly=yes -T git@github.com"
 }
 
-export COLCON_PAYLOAD_WS_DIR="$HOME/PHD_RESEARCH/payload_transportation_ws_kilted"
-export ROS_DOMAIN_ID=1
-export ROS_LOCALHOST_ONLY=1
-export CYCLONEDDS_URI="$COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/cyclone/cyclone_station.xml"
-export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-
-
-alias acp_build="colcon build --symlink-install --cmake-clean-cache --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
 alias certify_ssh="ssh -T git@github.com"
 
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/$HOME/acados/lib
-export ACADOS_SOURCE_DIR=/$HOME/acados
+# ==============================================================================
+# Payload transportation workspace
+# ==============================================================================
 
-alias max_bandwith="sudo sysctl -w net.core.rmem_max=2147483647"
-sudo sysctl -w net.core.rmem_max=2147483647
-source $HOME/zenoh-plugin-ros2dds/install/setup.bash
+export COLCON_PAYLOAD_WS_DIR="$HOME/PHD_RESEARCH/payload_transportation_ws_kilted"
 
-alias zenoh_lidar_station="zenoh_bridge_ros2dds -c $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_lidar_station.json5"
-alias zenoh_lidar_multiple_station="zenoh_bridge_ros2dds -c $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_lidar_station_multiple.json5"
+alias acp_build="colcon build \
+  --symlink-install \
+  --packages-skip prime_crocoddyl_cable \
+  --cmake-args \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
 
-alias zenoh_vicon_station="zenoh_bridge_ros2dds -c $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_vicon_station.json5"
-alias zenoh_vicon_multiple_station="zenoh_bridge_ros2dds -c $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_vicon_station_multiple.json5"
+# ==============================================================================
+# ROS 2 communication
+# ==============================================================================
 
-alias zenoh_simulator_station="zenoh_bridge_ros2dds -c $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_simulator_station.json5"
-alias zenoh_simulator_multiple_station="zenoh_bridge_ros2dds -c $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_simulator_station_multiple.json5"
+export ROS_DOMAIN_ID=1
+export ROS_LOCALHOST_ONLY=1
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+
+export CYCLONEDDS_URI="$COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/cyclone/cyclone_station.xml"
+
+# ==============================================================================
+# acados
+# ==============================================================================
+
+export ACADOS_SOURCE_DIR="$HOME/acados"
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+${LD_LIBRARY_PATH}:}$ACADOS_SOURCE_DIR/lib"
+
+# ==============================================================================
+# Network configuration
+# ==============================================================================
+
+alias max_bandwidth="sudo sysctl -w net.core.rmem_max=2147483647"
+
+# ==============================================================================
+# Zenoh ROS 2 bridge
+# ==============================================================================
+
+source "$HOME/zenoh-plugin-ros2dds/install/setup.bash"
+
+alias zenoh_lidar_station="zenoh_bridge_ros2dds -c \"$COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_lidar_station.json5\""
+
+alias zenoh_lidar_multiple_station="zenoh_bridge_ros2dds -c \"$COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_lidar_station_multiple.json5\""
+
+alias zenoh_vicon_station="zenoh_bridge_ros2dds -c \"$COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_vicon_station.json5\""
+
+alias zenoh_vicon_multiple_station="zenoh_bridge_ros2dds -c \"$COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_vicon_station_multiple.json5\""
+
+alias zenoh_simulator_station="zenoh_bridge_ros2dds -c \"$COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_simulator_station.json5\""
+
+alias zenoh_simulator_multiple_station="zenoh_bridge_ros2dds -c \"$COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_simulator_station_multiple.json5\""
+
+# ==============================================================================
+# Display forwarding for containers
+# ==============================================================================
 
 export DISPLAY=:0
+
+alias max_bandwidth="sudo sysctl -w net.core.rmem_max=2147483647"
+sudo sysctl -w net.core.rmem_max=2147483647
