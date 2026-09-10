@@ -232,57 +232,70 @@ alias wifi_on="sudo nmcli radio wifi on"
 
 # Configure the wired connection from the numeric suffix of $USER.
 # Example: USER=eagle11 -> 192.168.51.11/23.
+detect_ethernet_connection() {
+    local connection
+
+    # Prefer an active ethernet connection with a real device.
+    connection="$(nmcli -t -f NAME,TYPE,DEVICE connection show --active \
+      | awk -F: '$2=="ethernet" && $3!="" {print $1; exit}')"
+
+    # Fall back to any saved ethernet profile.
+    if [ -z "$connection" ]; then
+      connection="$(nmcli -t -f NAME,TYPE connection show \
+        | awk -F: '$2=="802-3-ethernet" || $2=="ethernet" {print $1; exit}')"
+    fi
+
+    printf '%s\n' "$connection"
+  }
 ethernet_static() {
-  local connection="${1:-Profile 1}"
-  local device_number
+    local connection="${1:-$(detect_ethernet_connection)}"
+    local device_number
 
-  if [[ "$USER" =~ ([0-9]+)$ ]]; then
-    device_number="${BASH_REMATCH[1]}"
-  else
-    echo "Error: USER '$USER' does not end with a device number."
-    return 1
-  fi
+    if [ -z "$connection" ]; then
+      echo "Error: no ethernet NetworkManager connection found."
+      nmcli -f NAME,TYPE,DEVICE connection show
+      return 1
+    fi
 
-  if (( 10#$device_number < 2 || 10#$device_number > 254 )); then
-    echo "Error: device number must be between 2 and 254."
-    return 1
-  fi
+    if [[ "$USER" =~ ([0-9]+)$ ]]; then
+      device_number="${BASH_REMATCH[1]}"
+    else
+      echo "Error: USER '$USER' does not end with a device number."
+      return 1
+    fi
 
-  echo "Configuring '$connection' as 192.168.51.${device_number}/23"
-  sudo nmcli connection modify "$connection" \
-    ipv4.method manual \
-    ipv4.addresses "192.168.51.${device_number}/23" \
-    ipv4.gateway "192.168.50.1" \
-    ipv4.dns "192.168.50.1 1.1.1.1" \
-    ipv4.route-metric 100 &&
-  sudo nmcli connection up "$connection"
-}
+    echo "Configuring '$connection' as 192.168.51.${device_number}/23"
+
+    sudo nmcli connection modify "$connection" \
+      ipv4.method manual \
+      ipv4.addresses "192.168.51.${device_number}/23" \
+      ipv4.gateway "192.168.50.1" \
+      ipv4.dns "192.168.50.1 1.1.1.1" \
+      ipv4.route-metric 100 &&
+    sudo nmcli connection up "$connection"
+  }
 
 lidar_static() {
-  local connection="${1:-Profile 1}"
-  local address="${2:-172.18.34.100/24}"
-  local gateway="${3:-172.18.34.1}"
+    local connection="${1:-$(detect_ethernet_connection)}"
+    local address="${2:-172.18.34.100/24}"
+    local gateway="${3:-172.18.34.1}"
 
-  # Verify that the NetworkManager connection exists.
-  if ! nmcli -t -f NAME connection show | grep -Fxq "$connection"; then
-    echo "Error: NetworkManager connection '$connection' does not exist."
-    echo "Available connections:"
-    nmcli -f NAME,TYPE,DEVICE connection show
-    return 1
-  fi
+    if [ -z "$connection" ]; then
+      echo "Error: no ethernet NetworkManager connection found."
+      nmcli -f NAME,TYPE,DEVICE connection show
+      return 1
+    fi
 
-  echo "Configuring '$connection' for the Livox LiDAR:"
-  echo "  Address: ${address}"
-  echo "  Gateway: ${gateway}"
-  echo "  Netmask: 255.255.255.0"
+    echo "Configuring '$connection' for the Livox LiDAR:"
+    echo "  Address: ${address}"
+    echo "  Gateway: ${gateway}"
 
-  sudo nmcli connection modify "$connection" \
-    ipv4.method manual \
-    ipv4.addresses "$address" \
-    ipv4.gateway "$gateway" \
-    ipv4.dns "" \
-    ipv4.never-default yes \
-    ipv4.route-metric 200 &&
-  sudo nmcli connection up "$connection"
-}
-
+    sudo nmcli connection modify "$connection" \
+      ipv4.method manual \
+      ipv4.addresses "$address" \
+      ipv4.gateway "$gateway" \
+      ipv4.dns "" \
+      ipv4.never-default yes \
+      ipv4.route-metric 200 &&
+    sudo nmcli connection up "$connection"
+  }
