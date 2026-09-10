@@ -300,85 +300,89 @@ lidar_static() {
     sudo nmcli connection up "$connection"
   }
 
-  record_payload_bag_kilted() {
+
+record_payload_bag_shm() (
     # Usage:
-    #   record_payload_bag <bag_suffix> [quad_name]
+    #   record_payload_bag_shm <bag_suffix> [quad_name]
     #
     # Examples:
-    #   record_payload_bag outdoor_test
-    #   record_payload_bag outdoor_test eagle11
+    #   record_payload_bag_shm outdoor_test
+    #   record_payload_bag_shm outdoor_test eagle11
 
-    if (( $# < 1 )) || [[ -z "$1" ]]; then
-      echo "Usage: record_payload_bag <bag_suffix> [quad_name]"
-      return 1
+    if (( $# < 1 )) || [[ -z "${1:-}" ]]; then
+      echo "Usage: record_payload_bag_shm <bag_suffix> [quad_name]"
+      exit 1
     fi
 
-    local BAG_SUFFIX="$1"
-    local QUAD_NAME="${2:-${USER}}"
-    QUAD_NAME="${QUAD_NAME#/}"
+    if [[ -z "${COLCON_PAYLOAD_WS_DIR:-}" ]]; then
+      echo "COLCON_PAYLOAD_WS_DIR is not defined"
+      exit 1
+    fi
 
-    local BAG_NAME="${QUAD_NAME}_${BAG_SUFFIX}"
-    local NS="/${QUAD_NAME}"
-    local QOS_FILE
+    bag_suffix="$1"
+    quad_name="${2:-${USER}}"
+    quad_name="${quad_name#/}"
 
-    QOS_FILE="$(mktemp "/tmp/${QUAD_NAME}_rosbag_qos.XXXXXX.yaml")" ||
-      return 1
+    bag_name="${quad_name}_${bag_suffix}"
+    namespace="/${quad_name}"
 
-    cat >"${QOS_FILE}" <<EOF
-  "${NS}/livox/lidar":
+    cyclone_shm_config="${COLCON_PAYLOAD_WS_DIR}/src/acp-autonomy-stack/config/eagle/cyclone/cyclone_eagle_shm.xml"
+
+    if [[ ! -f "${cyclone_shm_config}" ]]; then
+      echo "CycloneDDS SHM configuration not found:"
+      echo "${cyclone_shm_config}"
+      exit 1
+    fi
+
+    if ! pgrep -x iox-roudi >/dev/null; then
+      echo "iox-roudi is not running"
+      echo "Start the onboard Zellij layout or run:"
+      echo "${COLCON_PAYLOAD_WS_DIR}/src/acp-autonomy-stack/launch/zellij/run_roudi_for_user.sh"
+      exit 1
+    fi
+
+    qos_file="$(mktemp "/tmp/${quad_name}_rosbag_qos.XXXXXX.yaml")" ||
+      exit 1
+
+    # The subshell's EXIT trap removes the temporary file on completion,
+    # error, or Ctrl-C.
+    trap 'rm -f -- "${qos_file}"' EXIT
+
+    cat >"${qos_file}" <<EOF
+  "${namespace}/livox/lidar":
     reliability: best_effort
     durability: volatile
     history: keep_last
     depth: 10
-
-  "${NS}/dlio/odom_node/pointcloud/deskewed":
-    reliability: best_effort
-    durability: volatile
-    history: keep_last
-    depth: 5
-
-  "${NS}/dlio/odom_node/pointcloud/keyframe":
-    reliability: best_effort
-    durability: volatile
-    history: keep_last
-    depth: 5
-
-  "${NS}/map":
-    reliability: best_effort
-    durability: volatile
-    history: keep_last
-    depth: 2
   EOF
 
-    local -a RECORD_PREFIX=(nice -n 10)
+    record_prefix=(nice -n 10)
 
-    # Reduce recorder disk priority when ionice is available.
     if command -v ionice >/dev/null 2>&1; then
-      RECORD_PREFIX+=(ionice -c 2 -n 7)
+      record_prefix+=(ionice -c 2 -n 7)
     fi
 
-    echo "Recording: ${BAG_NAME}"
-    echo "Namespace: ${NS}"
-    echo "Point-cloud QoS: best-effort"
+    echo "Recording bag: ${bag_name}"
+    echo "Namespace: ${namespace}"
+    echo "CycloneDDS configuration: ${cyclone_shm_config}"
+    echo "Raw LiDAR recorder QoS: best-effort, depth 10"
 
-    local RESULT
+    env \
+      RMW_IMPLEMENTATION=rmw_cyclonedds_cpp \
+      CYCLONEDDS_URI="${cyclone_shm_config}" \
+      "${record_prefix[@]}" \
+      ros2 bag record \
+        --storage mcap \
+        --output "${bag_name}" \
+        --qos-profile-overrides-path "${qos_file}" \
+        --topics \
+        "${namespace}/odom" \
+        "${namespace}/estimated_odom" \
+        "${namespace}/payload/odom" \
+        "${namespace}/payload/estimated_odom" \
+        "${namespace}/position_cmd" \
+        "${namespace}/livox/lidar" \
+        "${namespace}/imu" \
+        "${namespace}/livox/imu" \
+        "${namespace}/trpy_cmd"
 
-    "${RECORD_PREFIX[@]}" ros2 bag record \
-      --storage mcap \
-      --output "${BAG_NAME}" \
-      --qos-profile-overrides-path "${QOS_FILE}" \
-      --topics \
-      "${NS}/odom" \
-      "${NS}/estimated_odom" \
-      "${NS}/payload/odom" \
-      "${NS}/payload/estimated_odom" \
-      "${NS}/position_cmd" \
-      "${NS}/livox/lidar" \
-      "${NS}/imu" \
-      "${NS}/livox/imu" \
-      "${NS}/trpy_cmd"
-
-    RESULT=$?
-    rm -f -- "${QOS_FILE}"
-    return "${RESULT}"
-  }
