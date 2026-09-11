@@ -301,10 +301,7 @@ lidar_static() {
   }
 
 
-record_payload_bag_shm() (
-    # This function runs inside a subshell because of the surrounding `( ... )`.
-    # Variables and traps created here will not modify the interactive terminal.
-
+  record_payload_bag_shm() (
     # ---------------------------------------------------------------------------
     # Usage
     # ---------------------------------------------------------------------------
@@ -315,6 +312,10 @@ record_payload_bag_shm() (
     #   record_payload_bag_shm outdoor_test eagle11
     #
     # If quad_name is omitted, the current USER is used.
+    #
+    # This function runs in a subshell because it uses `( ... )`.
+    # Therefore, its temporary variables and cleanup trap do not affect the
+    # interactive terminal.
 
     if (( $# < 1 )) || [[ -z "${1:-}" ]]; then
       echo "Usage: record_payload_bag_shm <bag_suffix> [quad_name]"
@@ -327,29 +328,31 @@ record_payload_bag_shm() (
     fi
 
     # ---------------------------------------------------------------------------
-    # Settings you may want to modify later
+    # Settings that can be modified later
     # ---------------------------------------------------------------------------
 
-    # Recorder QoS queue for the raw LiDAR.
-    # This only affects the rosbag subscriber; it does not change DLIO's queue.
+    # QoS queue used by the rosbag LiDAR subscriber.
+    # This does not modify the DLIO subscriber queue.
     local lidar_qos_depth=10
 
-    # Positive nice values give the recorder lower CPU priority.
-    # Normal priority is 0; 19 is the lowest priority.
+    # Lower the recorder's CPU priority.
+    # 0 is normal priority and 19 is the lowest priority.
     local recorder_nice_level=10
 
-    # ionice class 2 means best-effort I/O.
-    # Priority ranges from 0 (highest) to 7 (lowest).
+    # Lower the recorder's disk I/O priority.
+    # Class 2 means best-effort.
+    # Priority 0 is highest and priority 7 is lowest.
     local recorder_io_class=2
     local recorder_io_priority=7
 
-    # Bags are saved in the current directory.
-    # This can later be changed to another directory, for example:
+    # Bags are saved in the directory where the command is executed.
+    #
+    # To save bags somewhere else, change this value, for example:
     # local bag_directory="/mnt/nvme/rosbags"
     local bag_directory="."
 
     # ---------------------------------------------------------------------------
-    # Interpret the arguments
+    # Read the function arguments
     # ---------------------------------------------------------------------------
 
     local bag_suffix="$1"
@@ -360,7 +363,7 @@ record_payload_bag_shm() (
       exit 1
     fi
 
-    # Allow either "eagle11" or "/eagle11" as the argument.
+    # Accept both "eagle11" and "/eagle11".
     quad_name="${quad_name#/}"
 
     local namespace="/${quad_name}"
@@ -368,7 +371,7 @@ record_payload_bag_shm() (
     local bag_output="${bag_directory}/${bag_name}"
 
     # ---------------------------------------------------------------------------
-    # CycloneDDS shared-memory configuration
+    # Locate and validate the CycloneDDS SHM configuration
     # ---------------------------------------------------------------------------
 
     local cyclone_shm_config
@@ -380,7 +383,7 @@ record_payload_bag_shm() (
       exit 1
     fi
 
-    # CycloneDDS needs the Iceoryx RouDi daemon for its SHM transport.
+    # CycloneDDS needs the Iceoryx RouDi daemon for SHM transport.
     if ! pgrep -x iox-roudi >/dev/null; then
       echo "Error: iox-roudi is not running."
       echo
@@ -395,11 +398,17 @@ record_payload_bag_shm() (
       exit 1
     fi
 
+    if [[ ! -w "${bag_directory}" ]]; then
+      echo "Error: Bag output directory is not writable:"
+      echo "  ${bag_directory}"
+      exit 1
+    fi
+
     # ---------------------------------------------------------------------------
-    # Temporary rosbag QoS configuration
+    # Create a temporary rosbag QoS configuration
     # ---------------------------------------------------------------------------
 
-    # Use a filesystem-safe version of the quad name in the temporary filename.
+    # Replace slashes so the quadrotor name is safe for a temporary filename.
     local temp_name="${quad_name//\//_}"
     local qos_file
 
@@ -408,25 +417,27 @@ record_payload_bag_shm() (
       exit 1
     }
 
-    # Delete the temporary file when recording finishes, fails, or is interrupted
-    # using Ctrl-C. Because this function uses a subshell, this trap is local.
+    # Delete the temporary QoS file when recording finishes, fails, or is
+    # interrupted using Ctrl-C.
     trap 'rm -f -- "${qos_file}"' EXIT
 
-    # The recorder requests best-effort LiDAR data. This prevents it from
-    # requesting reliable retransmission of large point-cloud messages.
-    cat >"${qos_file}" <<EOF
-  "${namespace}/livox/lidar":
-    reliability: best_effort
-    durability: volatile
-    history: keep_last
-    depth: ${lidar_qos_depth}
-  EOF
+    # Request the raw LiDAR using best-effort QoS.
+    #
+    # printf is used instead of a heredoc so that indentation in this function
+    # cannot produce an EOF parsing error.
+    {
+      printf '"%s/livox/lidar":\n' "${namespace}"
+      printf '  reliability: best_effort\n'
+      printf '  durability: volatile\n'
+      printf '  history: keep_last\n'
+      printf '  depth: %s\n' "${lidar_qos_depth}"
+    } > "${qos_file}"
 
     # ---------------------------------------------------------------------------
     # Topics to record
     # ---------------------------------------------------------------------------
 
-    # Add or remove topics from this array as needed.
+    # Add or remove topics from this list as needed.
     local -a topics=(
       "${namespace}/odom"
       "${namespace}/estimated_odom"
@@ -440,14 +451,14 @@ record_payload_bag_shm() (
     )
 
     # ---------------------------------------------------------------------------
-    # Recorder process priority
+    # Configure recorder process priority
     # ---------------------------------------------------------------------------
 
     local -a recorder_prefix=(
       nice -n "${recorder_nice_level}"
     )
 
-    # ionice is optional. Use it only when available on the computer.
+    # ionice is optional. If unavailable, recording continues using only nice.
     if command -v ionice >/dev/null 2>&1; then
       recorder_prefix+=(
         ionice
@@ -455,7 +466,8 @@ record_payload_bag_shm() (
         -n "${recorder_io_priority}"
       )
     else
-      echo "Warning: ionice is unavailable; only CPU priority will be lowered."
+      echo "Warning: ionice is unavailable."
+      echo "Only the recorder CPU priority will be lowered."
     fi
 
     # ---------------------------------------------------------------------------
