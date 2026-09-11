@@ -302,12 +302,19 @@ lidar_static() {
 
 
 record_payload_bag_shm() (
-    # Usage:
-    #   record_payload_bag_shm <bag_suffix> [quad_name]
+    # This function runs inside a subshell because of the surrounding `( ... )`.
+    # Variables and traps created here will not modify the interactive terminal.
+
+    # ---------------------------------------------------------------------------
+    # Usage
+    # ---------------------------------------------------------------------------
+    # record_payload_bag_shm <bag_suffix> [quad_name]
     #
     # Examples:
     #   record_payload_bag_shm outdoor_test
     #   record_payload_bag_shm outdoor_test eagle11
+    #
+    # If quad_name is omitted, the current USER is used.
 
     if (( $# < 1 )) || [[ -z "${1:-}" ]]; then
       echo "Usage: record_payload_bag_shm <bag_suffix> [quad_name]"
@@ -315,74 +322,164 @@ record_payload_bag_shm() (
     fi
 
     if [[ -z "${COLCON_PAYLOAD_WS_DIR:-}" ]]; then
-      echo "COLCON_PAYLOAD_WS_DIR is not defined"
+      echo "Error: COLCON_PAYLOAD_WS_DIR is not defined."
       exit 1
     fi
 
-    bag_suffix="$1"
-    quad_name="${2:-${USER}}"
+    # ---------------------------------------------------------------------------
+    # Settings you may want to modify later
+    # ---------------------------------------------------------------------------
+
+    # Recorder QoS queue for the raw LiDAR.
+    # This only affects the rosbag subscriber; it does not change DLIO's queue.
+    local lidar_qos_depth=10
+
+    # Positive nice values give the recorder lower CPU priority.
+    # Normal priority is 0; 19 is the lowest priority.
+    local recorder_nice_level=10
+
+    # ionice class 2 means best-effort I/O.
+    # Priority ranges from 0 (highest) to 7 (lowest).
+    local recorder_io_class=2
+    local recorder_io_priority=7
+
+    # Bags are saved in the current directory.
+    # This can later be changed to another directory, for example:
+    # local bag_directory="/mnt/nvme/rosbags"
+    local bag_directory="."
+
+    # ---------------------------------------------------------------------------
+    # Interpret the arguments
+    # ---------------------------------------------------------------------------
+
+    local bag_suffix="$1"
+    local quad_name="${2:-${USER:-}}"
+
+    if [[ -z "${quad_name}" ]]; then
+      echo "Error: No quadrotor name was provided and USER is empty."
+      exit 1
+    fi
+
+    # Allow either "eagle11" or "/eagle11" as the argument.
     quad_name="${quad_name#/}"
 
-    bag_name="${quad_name}_${bag_suffix}"
-    namespace="/${quad_name}"
+    local namespace="/${quad_name}"
+    local bag_name="${quad_name}_${bag_suffix}"
+    local bag_output="${bag_directory}/${bag_name}"
 
+    # ---------------------------------------------------------------------------
+    # CycloneDDS shared-memory configuration
+    # ---------------------------------------------------------------------------
+
+    local cyclone_shm_config
     cyclone_shm_config="${COLCON_PAYLOAD_WS_DIR}/src/acp-autonomy-stack/config/eagle/cyclone/cyclone_eagle_shm.xml"
 
     if [[ ! -f "${cyclone_shm_config}" ]]; then
-      echo "CycloneDDS SHM configuration not found:"
-      echo "${cyclone_shm_config}"
+      echo "Error: CycloneDDS SHM configuration was not found:"
+      echo "  ${cyclone_shm_config}"
       exit 1
     fi
 
+    # CycloneDDS needs the Iceoryx RouDi daemon for its SHM transport.
     if ! pgrep -x iox-roudi >/dev/null; then
-      echo "iox-roudi is not running"
-      echo "Start the onboard Zellij layout or run:"
-      echo "${COLCON_PAYLOAD_WS_DIR}/src/acp-autonomy-stack/launch/zellij/run_roudi_for_user.sh"
+      echo "Error: iox-roudi is not running."
+      echo
+      echo "Start the onboard Zellij layout, or run:"
+      echo "  ${COLCON_PAYLOAD_WS_DIR}/src/acp-autonomy-stack/launch/zellij/run_roudi_for_user.sh"
       exit 1
     fi
 
-    qos_file="$(mktemp "/tmp/${quad_name}_rosbag_qos.XXXXXX.yaml")" ||
+    if [[ ! -d "${bag_directory}" ]]; then
+      echo "Error: Bag output directory does not exist:"
+      echo "  ${bag_directory}"
       exit 1
+    fi
 
-    # The subshell's EXIT trap removes the temporary file on completion,
-    # error, or Ctrl-C.
+    # ---------------------------------------------------------------------------
+    # Temporary rosbag QoS configuration
+    # ---------------------------------------------------------------------------
+
+    # Use a filesystem-safe version of the quad name in the temporary filename.
+    local temp_name="${quad_name//\//_}"
+    local qos_file
+
+    qos_file="$(mktemp "/tmp/${temp_name}_rosbag_qos.XXXXXX.yaml")" || {
+      echo "Error: Could not create the temporary QoS file."
+      exit 1
+    }
+
+    # Delete the temporary file when recording finishes, fails, or is interrupted
+    # using Ctrl-C. Because this function uses a subshell, this trap is local.
     trap 'rm -f -- "${qos_file}"' EXIT
 
+    # The recorder requests best-effort LiDAR data. This prevents it from
+    # requesting reliable retransmission of large point-cloud messages.
     cat >"${qos_file}" <<EOF
   "${namespace}/livox/lidar":
     reliability: best_effort
     durability: volatile
     history: keep_last
-    depth: 10
+    depth: ${lidar_qos_depth}
   EOF
 
-    record_prefix=(nice -n 10)
+    # ---------------------------------------------------------------------------
+    # Topics to record
+    # ---------------------------------------------------------------------------
 
+    # Add or remove topics from this array as needed.
+    local -a topics=(
+      "${namespace}/odom"
+      "${namespace}/estimated_odom"
+      "${namespace}/payload/odom"
+      "${namespace}/payload/estimated_odom"
+      "${namespace}/position_cmd"
+      "${namespace}/livox/lidar"
+      "${namespace}/imu"
+      "${namespace}/livox/imu"
+      "${namespace}/trpy_cmd"
+    )
+
+    # ---------------------------------------------------------------------------
+    # Recorder process priority
+    # ---------------------------------------------------------------------------
+
+    local -a recorder_prefix=(
+      nice -n "${recorder_nice_level}"
+    )
+
+    # ionice is optional. Use it only when available on the computer.
     if command -v ionice >/dev/null 2>&1; then
-      record_prefix+=(ionice -c 2 -n 7)
+      recorder_prefix+=(
+        ionice
+        -c "${recorder_io_class}"
+        -n "${recorder_io_priority}"
+      )
+    else
+      echo "Warning: ionice is unavailable; only CPU priority will be lowered."
     fi
 
-    echo "Recording bag: ${bag_name}"
-    echo "Namespace: ${namespace}"
-    echo "CycloneDDS configuration: ${cyclone_shm_config}"
-    echo "Raw LiDAR recorder QoS: best-effort, depth 10"
+    # ---------------------------------------------------------------------------
+    # Start recording
+    # ---------------------------------------------------------------------------
+
+    echo
+    echo "Starting payload bag recording"
+    echo "  Bag:            ${bag_output}"
+    echo "  Namespace:      ${namespace}"
+    echo "  Cyclone config: ${cyclone_shm_config}"
+    echo "  LiDAR QoS:      best-effort, depth ${lidar_qos_depth}"
+    echo "  Storage:        MCAP"
+    echo
+    echo "Press Ctrl-C to stop recording."
+    echo
 
     env \
       RMW_IMPLEMENTATION=rmw_cyclonedds_cpp \
       CYCLONEDDS_URI="${cyclone_shm_config}" \
-      "${record_prefix[@]}" \
+      "${recorder_prefix[@]}" \
       ros2 bag record \
         --storage mcap \
-        --output "${bag_name}" \
+        --output "${bag_output}" \
         --qos-profile-overrides-path "${qos_file}" \
-        --topics \
-        "${namespace}/odom" \
-        "${namespace}/estimated_odom" \
-        "${namespace}/payload/odom" \
-        "${namespace}/payload/estimated_odom" \
-        "${namespace}/position_cmd" \
-        "${namespace}/livox/lidar" \
-        "${namespace}/imu" \
-        "${namespace}/livox/imu" \
-        "${namespace}/trpy_cmd"
-
+        --topics "${topics[@]}"
+  )
