@@ -158,6 +158,7 @@ github_ssh_setup() {
   echo "Test with (forces this key):"
   echo "ssh -i \"$KEY_PATH\" -o IdentitiesOnly=yes -T git@github.com"
 }
+alias certify_ssh="ssh -T git@github.com"
 alias fan="sudo jetson_clocks --fan"
 sudo jetson_clocks --fan
 
