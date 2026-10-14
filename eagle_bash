@@ -505,3 +505,7 @@ lidar_static() {
         --qos-profile-overrides-path "${qos_file}" \
         --topics "${topics[@]}"
   )
+
+alias load_cell_tare="ros2 topic pub --once /$USER/load_cell/tare std_msgs/msg/Empty "{}""
+alias load_cell_calib='ros2 topic pub --once /$USER/load_cell/calibrate std_msgs/msg/Float64 "{data: 200.0}"'
+
