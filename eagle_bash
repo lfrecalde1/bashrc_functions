@@ -458,6 +458,8 @@ lidar_static() {
       "${namespace}/reference_path"
       "${namespace}/reference_payload_path"
       "${namespace}/betaflight"
+	  "${namespace}/fluidpressure"
+
     )
 
     # ---------------------------------------------------------------------------
