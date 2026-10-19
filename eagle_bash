@@ -459,6 +459,9 @@ lidar_static() {
       "${namespace}/reference_payload_path"
       "${namespace}/betaflight"
 	  "${namespace}/fluidpressure"
+	  "tf"
+      "tf_static"
+
 
     )
 
