@@ -449,18 +449,15 @@ lidar_static() {
       "${namespace}/payload/odom"
       "${namespace}/payload/estimated_odom"
       "${namespace}/position_cmd"
-      "${namespace}/livox/lidar"
       "${namespace}/imu"
-      "${namespace}/livox/imu"
       "${namespace}/trpy_cmd"
       "${namespace}/predicted_path"
       "${namespace}/predicted_payload_path"
       "${namespace}/reference_path"
       "${namespace}/reference_payload_path"
       "${namespace}/betaflight"
-	  "${namespace}/fluidpressure"
-	  "tf"
-      "tf_static"
+	  "/tf"
+      "/tf_static"
 
 
     )
