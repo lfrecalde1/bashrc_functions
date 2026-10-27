@@ -79,7 +79,7 @@ connectwifi() {
   unset PASS SAVE_IF_POSSIBLE
 }
 
-alias gb="nvim ~/.bashrc"
+alias gb='if command -v nvim >/dev/null 2>&1; then nvim "$HOME/.bashrc"; else vim "$HOME/.bashrc"; fi'
 alias gi="source ~/.bashrc"
 source /opt/ros/kilted/setup.bash
 
@@ -183,7 +183,7 @@ alias enable_chrony='sudo systemctl enable --now chrony.service'
 alias restart_chrony='sudo systemctl restart chrony.service'
 alias check_chrony='chronyc sources -a -v; echo; chronyc tracking'
 alias monitor_chrony='watch -n 2 -c "chronyc sources -a -v; echo; chronyc tracking"'
-alias edit_chrony='sudo nvim /etc/chrony/chrony.conf'
+alias edit_chrony='if command -v nvim >/dev/null 2>&1; then sudo nvim /etc/chrony/chrony.conf; else sudo vim /etc/chrony/chrony.conf; fi'
 
 
 alias lidar_eagle="zellij --layout $COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/launch/zellij/payload_onboard_lidar_control.zellij.kdl"
