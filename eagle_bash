@@ -86,7 +86,7 @@ source /opt/ros/kilted/setup.bash
 export LD_LIBRARY_PATH=$HOME/clangd-root/usr/lib/aarch64-linux-gnu:$HOME/clangd-root/usr/lib:$LD_LIBRARY_PATH
 export PATH="$HOME/clangd-root/usr/bin:$PATH"
 
-alias acp_build="colcon build --symlink-install --cmake-clean-cache --packages-skip livox_ros_driver2 direct_lidar_inertial_odometry dlio_map_localization --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+alias acp_build="colcon build --symlink-install --cmake-clean-cache --packages-skip livox_ros_driver2 direct_lidar_inertial_odometry dlio_map_localization mujoco_ros_utils acp_mujoco_simulator --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
 alias gpu_build="colcon build --symlink-install   --packages-select direct_lidar_inertial_odometry dlio_map_localization --cmake-args -DCMAKE_BUILD_TYPE=Release -DUSE_NANO_GICP_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=87"
 
 
