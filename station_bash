@@ -117,7 +117,9 @@ alias certify_ssh="ssh -T git@github.com"
 # ==============================================================================
 export COLCON_PAYLOAD_WS_DIR="$HOME/payload_transportation_ws_kilted"
 export MUJOCO_ROOT_DIR="$COLCON_PAYLOAD_WS_DIR/mujoco-3.10.0"
-alias acp_build="colcon build --symlink-install --cmake-clean-cache --packages-skip livox_ros_driver2 direct_lidar_inertial_odometry dlio_map_localization mujoco_ros_utils --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+
+alias acp_build='colcon build --symlink-install --cmake-clean-cache --packages-skip livox_ros_driver2 direct_lidar_inertial_odometry dlio_map_localization mujoco_ros_utils acp_mujoco_simulator --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON'
+alias acp_build_mujoco='cd "$COLCON_PAYLOAD_WS_DIR" && source install/setup.bash && colcon build --symlink-install --packages-select mujoco_ros_utils acp_mujoco_simulator --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo -DMUJOCO_ROOT_DIR="$COLCON_PAYLOAD_WS_DIR/mujoco-3.10.0"'
 alias gpu_build="colcon build --symlink-install   --packages-select direct_lidar_inertial_odometry dlio_map_localization --cmake-args -DCMAKE_BUILD_TYPE=Release -DUSE_NANO_GICP_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=87"
 
 # ==============================================================================
