@@ -1,153 +1,145 @@
 # ==============================================================================
 # Shell utilities
 # ==============================================================================
-
-alias gb="vim ~/.bashrc"
+alias gb="nvim ~/.bashrc"
 alias gi="source ~/.bashrc"
 
 # ==============================================================================
 # ROS 2 Kilted
 # ==============================================================================
-
 source /opt/ros/kilted/setup.bash
 source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash
 
 # ==============================================================================
 # Rust / Cargo
 # ==============================================================================
-
 source "$HOME/.cargo/env"
-
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
-
-# ==============================================================================
-# Terminal appearance
-# ==============================================================================
-
-export TERM=xterm-256color
-
-PS1='\[\033[01;33m\]\u@\h\[\033[01;34m\]:\[\033[00m\]\[\033[01;34m\]\w\[\033[00m\]\$ '
-
-export CLICOLOR=1
-export LSCOLORS=GxFxCxDxBxegedabagaced
 
 # ==============================================================================
 # GitHub SSH configuration
 # ==============================================================================
-
 github_ssh_setup() {
-  local EMAIL="$1"
-  local LABEL="${2:-github}"
-  local FORCE="${3:-}"
+  local email="${1:-}"
+  local label="${2:-github}"
+  local option="${3:-}"
 
-  if [ -z "$EMAIL" ]; then
-    echo "Usage: github_ssh_setup your_email@example.com [label] [--force]"
-    echo "Example: github_ssh_setup me@domain.com myuser --force"
+  # 1. Validate arguments. Allow --force with the default label too.
+  if [[ "$label" == "--force" && $# -eq 2 ]]; then
+    label="github"
+    option="--force"
+  fi
+
+  if [[ -z "$email" || $# -gt 3 || (-n "$option" && "$option" != "--force") ]]; then
+    printf 'Usage: github_ssh_setup EMAIL [LABEL] [--force]\n' >&2
+    return 1
+  fi
+  if [[ ! "$label" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ ]]; then
+    printf 'Label must start with a letter or digit and contain only letters, digits, dots, underscores, or hyphens.\n' >&2
     return 1
   fi
 
-  local KEY_PATH="$HOME/.ssh/id_ed25519_${LABEL}"
+  # 2. Define the paths and prepare the SSH directory.
+  local ssh_dir="$HOME/.ssh"
+  local private_key="$ssh_dir/id_ed25519_$label"
+  local public_key="$private_key.pub"
+  local key_file
 
-  mkdir -p "$HOME/.ssh"
-  chmod 700 "$HOME/.ssh"
+  mkdir -p -- "$ssh_dir" || return 1
+  chmod 700 -- "$ssh_dir" || return 1
 
-  if [ "$FORCE" = "--force" ]; then
-    local timestamp
-    timestamp="$(date +%Y%m%d_%H%M%S)"
+  for key_file in "$private_key" "$public_key"; do
+    if [[ -L "$key_file" || (-e "$key_file" && ! -f "$key_file") ]]; then
+      printf 'Expected a regular key file: %s\n' "$key_file" >&2
+      return 1
+    fi
+  done
 
-    [ -f "$KEY_PATH" ] &&
-      mv -f "$KEY_PATH" "${KEY_PATH}.bak.${timestamp}"
-
-    [ -f "${KEY_PATH}.pub" ] &&
-      mv -f "${KEY_PATH}.pub" "${KEY_PATH}.pub.bak.${timestamp}"
+  # 3. --force moves existing keys to a unique backup directory.
+  if [[ "$option" == "--force" && (-f "$private_key" || -f "$public_key") ]]; then
+    local backup_dir
+    backup_dir="$(mktemp -d "$ssh_dir/${label}.backup.XXXXXX")" || return 1
+    printf 'Backing up existing keys to: %s\n' "$backup_dir"
+    for key_file in "$private_key" "$public_key"; do
+      if [[ -f "$key_file" ]]; then
+        mv -- "$key_file" "$backup_dir/" || return 1
+      fi
+    done
   fi
 
-  if [ -f "$KEY_PATH" ]; then
-    echo "[INFO] SSH key already exists at $KEY_PATH"
+  # 4. Reuse the private key, or generate a new pair.
+  if [[ -f "$private_key" ]]; then
+    printf 'Reusing key: %s\n' "$private_key"
   else
-    echo "[INFO] Generating new ED25519 SSH key at $KEY_PATH..."
-    ssh-keygen -t ed25519 -a 64 -C "$EMAIL" -f "$KEY_PATH" || return 1
+    if [[ -f "$public_key" ]]; then
+      printf 'A public key exists without its private key. Choose another label or use --force.\n' >&2
+      return 1
+    fi
+    printf 'Generating key: %s\n' "$private_key"
+    ssh-keygen -t ed25519 -a 64 -C "$email" -f "$private_key" || return 1
   fi
 
-  eval "$(ssh-agent -s)" >/dev/null 2>&1
-  ssh-add "$KEY_PATH" || return 1
+  # Recover a missing public key from an existing private key.
+  if [[ ! -f "$public_key" ]]; then
+    local public_key_text
+    public_key_text="$(ssh-keygen -y -f "$private_key")" || return 1
+    printf '%s\n' "$public_key_text" >"$public_key" || return 1
+  fi
 
-  echo
-  echo "===== COPY THIS PUBLIC KEY TO GITHUB ====="
-  cat "${KEY_PATH}.pub"
-  echo "=========================================="
-  echo
-  echo "Test with:"
-  echo "ssh -i \"$KEY_PATH\" -o IdentitiesOnly=yes -T git@github.com"
+  # 5. Reuse the current agent. Exit code 2 means it cannot be reached.
+  # Exit code 1 is normal when the agent has no keys loaded yet.
+  local agent_status=0
+  local agent_settings
+  ssh-add -l >/dev/null 2>&1 || agent_status=$?
+  case "$agent_status" in
+  0 | 1) ;;
+  2)
+    agent_settings="$(ssh-agent -s)" || return 1
+    eval "$agent_settings" >/dev/null || return 1
+    ;;
+  *)
+    printf 'Could not check the SSH agent (exit %s).\n' "$agent_status" >&2
+    return 1
+    ;;
+  esac
+  ssh-add "$private_key" || return 1
+
+  # 6. Display only the public key; adding it to GitHub is a manual step.
+  printf '\nAdd this public key in GitHub Settings > SSH and GPG keys:\n'
+  cat -- "$public_key" || return 1
+  printf '\nAfter adding it, test with:\n'
+  printf 'ssh -i %q -o IdentitiesOnly=yes -T git@github.com\n' "$private_key"
 }
-
 alias certify_ssh="ssh -T git@github.com"
 
 # ==============================================================================
 # Payload transportation workspace
 # ==============================================================================
-
-export COLCON_PAYLOAD_WS_DIR="$HOME/PHD_RESEARCH/payload_transportation_ws_kilted"
-
-alias acp_build="colcon build \
-  --symlink-install \
-  --packages-skip prime_crocoddyl_cable \
-  --cmake-args \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+export COLCON_PAYLOAD_WS_DIR="$HOME/payload_transportation_ws_kilted"
+export MUJOCO_ROOT_DIR="$COLCON_PAYLOAD_WS_DIR/mujoco-3.10.0"
+alias acp_build="colcon build --symlink-install --cmake-clean-cache --packages-skip livox_ros_driver2 direct_lidar_inertial_odometry dlio_map_localization mujoco_ros_utils --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+alias gpu_build="colcon build --symlink-install   --packages-select direct_lidar_inertial_odometry dlio_map_localization --cmake-args -DCMAKE_BUILD_TYPE=Release -DUSE_NANO_GICP_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=87"
 
 # ==============================================================================
 # ROS 2 communication
 # ==============================================================================
-
 export ROS_DOMAIN_ID=1
 export ROS_LOCALHOST_ONLY=1
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-
 export CYCLONEDDS_URI="$COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/cyclone/cyclone_station.xml"
 
 # ==============================================================================
 # acados
 # ==============================================================================
-
 export ACADOS_SOURCE_DIR="$HOME/acados"
 export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+${LD_LIBRARY_PATH}:}$ACADOS_SOURCE_DIR/lib"
 
 # ==============================================================================
 # Network configuration
 # ==============================================================================
-
 alias max_bandwidth="sudo sysctl -w net.core.rmem_max=2147483647"
 
 # ==============================================================================
 # Zenoh ROS 2 bridge
 # ==============================================================================
-
 source "$HOME/zenoh-plugin-ros2dds/install/setup.bash"
-
-alias zenoh_lidar_station="zenoh_bridge_ros2dds -c \"$COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_lidar_station.json5\""
-
-alias zenoh_lidar_multiple_station="zenoh_bridge_ros2dds -c \"$COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_lidar_station_multiple.json5\""
-
-alias zenoh_vicon_station="zenoh_bridge_ros2dds -c \"$COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_vicon_station.json5\""
-
-alias zenoh_vicon_multiple_station="zenoh_bridge_ros2dds -c \"$COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_vicon_station_multiple.json5\""
-
-alias zenoh_simulator_station="zenoh_bridge_ros2dds -c \"$COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_simulator_station.json5\""
-
-alias zenoh_simulator_multiple_station="zenoh_bridge_ros2dds -c \"$COLCON_PAYLOAD_WS_DIR/src/acp-autonomy-stack/config/eagle/zenoh/imn_simulator_station_multiple.json5\""
-
-# ==============================================================================
-# Display forwarding for containers
-# ==============================================================================
-
-export DISPLAY=:0
-
-alias max_bandwidth="sudo sysctl -w net.core.rmem_max=2147483647"
-sudo sysctl -w net.core.rmem_max=2147483647
-
-alias enable_chrony='sudo systemctl enable --now chrony.service'
-alias restart_chrony='sudo systemctl restart chrony.service'
-alias check_chrony='chronyc sources -a -v; echo; chronyc tracking'
-alias monitor_chrony='watch -n 2 -c "chronyc sources -a -v; echo; chronyc tracking"'
-alias edit_chrony='sudo nvim /etc/chrony/chrony.conf'
